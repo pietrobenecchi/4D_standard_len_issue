@@ -139,8 +139,8 @@ pub fn softmax(comptime T: anytype, tensor: *Tensor(T)) !Tensor(T) {
 }
 
 pub inline fn lean_softmax(comptime T: anytype, input: *Tensor(T), output: *Tensor(T)) !void {
-    const rows = input.shape[0];
-    const cols = input.shape[1];
+    const rows = input.shape[2];
+    const cols = input.shape[3];
 
     var max_val: T = undefined;
     var sum_of_exp: T = 0.0;

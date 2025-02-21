@@ -395,9 +395,9 @@ test "To Tensor Batch Test" {
     _ = loader.xNextBatch();
     _ = loader.yNextBatch();
     try loader.toTensor(&allocator, &shapeX, &shapeY);
-    try std.testing.expect(loader.xTensor.shape[0] == 1);
-    try std.testing.expect(loader.xTensor.shape[1] == 3);
-    try std.testing.expect(loader.yTensor.shape[0] == 1);
+    try std.testing.expect(loader.xTensor.shape[2] == 1);
+    try std.testing.expect(loader.xTensor.shape[3] == 3);
+    try std.testing.expect(loader.yTensor.shape[2] == 1);
 
     loader.xTensor.deinit();
     loader.yTensor.deinit();
@@ -422,8 +422,8 @@ test "MNIST batch and to Tensor test" {
 
     try std.testing.expectEqual(loader.X.len, 10000);
     try std.testing.expectEqual(loader.y.len, 10000);
-    var shapeXArr = [_]usize{ loader.batchSize, 784 };
-    var shapeYArr = [_]usize{loader.batchSize};
+    var shapeXArr = [_]usize{ loader.batchSize, 784, 28, 28 };
+    var shapeYArr = [_]usize{ loader.batchSize, 1, 1, 10 };
     var shapeX: []usize = &shapeXArr;
     var shapeY: []usize = &shapeYArr;
     _ = loader.xNextBatch();
@@ -450,8 +450,8 @@ test "Shuffling and data split" {
 
     const image_file_name: []const u8 = "datasets/t10k-images-idx3-ubyte";
     const label_file_name: []const u8 = "datasets/t10k-labels-idx1-ubyte";
-    var shapeXArr = [_]usize{ loader.batchSize, 784 };
-    var shapeYArr = [_]usize{loader.batchSize};
+    var shapeXArr = [_]usize{ loader.batchSize, 784, 28, 28 };
+    var shapeYArr = [_]usize{ loader.batchSize, 1, 1, 10 };
     var shapeX: []usize = &shapeXArr;
     var shapeY: []usize = &shapeYArr;
 
@@ -471,9 +471,17 @@ test "Shuffling and data split" {
     try std.testing.expect(x_testBatch.len == 32);
     try std.testing.expect(y_testBatch.len == 32);
     try loader.toTensor(&allocator, &shapeX, &shapeY);
-    try std.testing.expect(loader.xTensor.shape[0] == 32);
-    try std.testing.expect(loader.xTensor.shape[1] == 784);
-    try std.testing.expect(loader.yTensor.shape[0] == 32);
+
+    try std.testing.expectEqual(32, loader.xTensor.shape[0]); // Batch size
+    try std.testing.expectEqual(784, loader.xTensor.shape[1]); // Channels
+    try std.testing.expectEqual(28, loader.xTensor.shape[2]); // Height
+    try std.testing.expectEqual(28, loader.xTensor.shape[3]); // Width
+
+    try std.testing.expectEqual(32, loader.yTensor.shape[0]); // Batch size
+    try std.testing.expectEqual(1, loader.yTensor.shape[1]); // Channels
+    try std.testing.expectEqual(1, loader.yTensor.shape[2]); // Height
+    try std.testing.expectEqual(10, loader.yTensor.shape[3]); // Width
+
     loader.xTensor.deinit();
     loader.yTensor.deinit();
 }
@@ -519,13 +527,13 @@ test "Shuffling and data split 2D" {
 
     try loader.toTensor(&allocator, &shapeX, &shapeY);
 
-    try std.testing.expect(loader.xTensor.shape.len == 3);
-    try std.testing.expect(loader.xTensor.shape[0] == 32);
-    try std.testing.expect(loader.xTensor.shape[1] == 28);
+    try std.testing.expect(loader.xTensor.shape.len == 4);
+    try std.testing.expect(loader.xTensor.shape[1] == 32);
     try std.testing.expect(loader.xTensor.shape[2] == 28);
+    try std.testing.expect(loader.xTensor.shape[3] == 28);
 
-    try std.testing.expect(loader.yTensor.shape.len == 1);
-    try std.testing.expect(loader.yTensor.shape[0] == 32);
+    try std.testing.expect(loader.yTensor.shape.len == 4);
+    try std.testing.expect(loader.yTensor.shape[3] == 32);
 
     loader.xTensor.deinit();
     loader.yTensor.deinit();

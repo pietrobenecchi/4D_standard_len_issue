@@ -79,7 +79,7 @@ pub fn FlattenLayer(comptime T: type) type {
         pub fn forward(ctx: *anyopaque, input: *Tensor.Tensor(T)) !Tensor.Tensor(T) {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
-            if (input.shape.len < 2) {
+            if (input.shape.len != 4) {
                 return LayerError.InvalidParameters;
             }
 
