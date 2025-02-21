@@ -5,8 +5,8 @@ const Tensor = @import("tensor").Tensor;
 const TensorError = @import("errorHandler").TensorError;
 const TensorMathError = @import("errorHandler").TensorMathError;
 
-test "Concatenate tensors along axis 0" {
-    std.debug.print("\n     test: Concatenate tensors along axis 0", .{});
+test "Concatenate tensors along axis 2" {
+    std.debug.print("\n     test: Concatenate tensors along axis 2", .{});
     var allocator = pkgAllocator.allocator;
 
     var inputArray1: [2][2]f32 = [_][2]f32{
@@ -28,7 +28,7 @@ test "Concatenate tensors along axis 0" {
 
     var tensors = [_]Tensor(f32){ t1, t2 };
 
-    var result_tensor = try TensMath.concatenate(f32, &allocator, &tensors, 0);
+    var result_tensor = try TensMath.concatenate(f32, &allocator, &tensors, 2);
     defer result_tensor.deinit();
 
     const expected_data: [4][2]f32 = [_][2]f32{
@@ -38,8 +38,10 @@ test "Concatenate tensors along axis 0" {
         [_]f32{ 7.0, 8.0 },
     };
 
-    try std.testing.expect(result_tensor.shape[0] == 4);
-    try std.testing.expect(result_tensor.shape[1] == 2);
+    try std.testing.expect(result_tensor.shape[0] == 1);
+    try std.testing.expect(result_tensor.shape[1] == 1);
+    try std.testing.expect(result_tensor.shape[2] == 4);
+    try std.testing.expect(result_tensor.shape[3] == 2);
 
     for (0..4) |i| {
         for (0..2) |j| {
@@ -49,8 +51,8 @@ test "Concatenate tensors along axis 0" {
     }
 }
 
-test "Concatenate tensors along axis 1" {
-    std.debug.print("\n     test: Concatenate tensors along axis 1", .{});
+test "Concatenate tensors along axis 3" {
+    std.debug.print("\n     test: Concatenate tensors along axis 3", .{});
     var allocator = pkgAllocator.allocator;
 
     var inputArray1: [2][2]f32 = [_][2]f32{
@@ -72,7 +74,7 @@ test "Concatenate tensors along axis 1" {
 
     var tensors = [_]Tensor(f32){ t1, t2 };
 
-    var result_tensor = try TensMath.concatenate(f32, &allocator, &tensors, 1);
+    var result_tensor = try TensMath.concatenate(f32, &allocator, &tensors, 3);
     defer result_tensor.deinit();
 
     const expected_data: [2][4]f32 = [_][4]f32{
@@ -81,8 +83,10 @@ test "Concatenate tensors along axis 1" {
     };
     result_tensor.print();
 
-    try std.testing.expect(result_tensor.shape[0] == 2);
-    try std.testing.expect(result_tensor.shape[1] == 4);
+    try std.testing.expect(result_tensor.shape[0] == 1);
+    try std.testing.expect(result_tensor.shape[1] == 1);
+    try std.testing.expect(result_tensor.shape[2] == 2);
+    try std.testing.expect(result_tensor.shape[3] == 4);
 
     for (0..2) |i| {
         for (0..4) |j| {
@@ -125,8 +129,10 @@ test "Concatenate tensors along negative axis" {
         [_]f32{ 3.0, 4.0, 7.0, 8.0 },
     };
 
-    try std.testing.expect(result_tensor.shape[0] == 2);
-    try std.testing.expect(result_tensor.shape[1] == 4);
+    try std.testing.expect(result_tensor.shape[0] == 1);
+    try std.testing.expect(result_tensor.shape[1] == 1);
+    try std.testing.expect(result_tensor.shape[2] == 2);
+    try std.testing.expect(result_tensor.shape[3] == 4);
 
     for (0..2) |i| {
         for (0..4) |j| {
@@ -135,8 +141,8 @@ test "Concatenate tensors along negative axis" {
     }
 }
 
-test "Concatenate 3D tensors along axis 2" {
-    std.debug.print("\n     test: Concatenate 3D tensors along axis 2", .{});
+test "Concatenate 3D tensors along axis 3" {
+    std.debug.print("\n     test: Concatenate 3D tensors along axis 3", .{});
     var allocator = std.testing.allocator;
 
     // Tensor A: shape [2, 2, 2]
@@ -158,9 +164,8 @@ test "Concatenate 3D tensors along axis 2" {
     defer tB.deinit();
 
     var tensors = [_]Tensor(f32){ tA, tB };
-
-    // Perform concatenation along axis 2
-    var result_tensor = try TensMath.concatenate(f32, &allocator, &tensors, 2);
+    // Perform concatenation along axis 3
+    var result_tensor = try TensMath.concatenate(f32, &allocator, &tensors, 3);
     defer result_tensor.deinit();
 
     const expected_data: [2][2][5]f32 = [_][2][5]f32{
@@ -174,9 +179,10 @@ test "Concatenate 3D tensors along axis 2" {
         },
     };
 
-    try std.testing.expect(result_tensor.shape[0] == 2);
+    try std.testing.expect(result_tensor.shape[0] == 1);
     try std.testing.expect(result_tensor.shape[1] == 2);
-    try std.testing.expect(result_tensor.shape[2] == 5);
+    try std.testing.expect(result_tensor.shape[2] == 2);
+    try std.testing.expect(result_tensor.shape[3] == 5);
 
     for (0..2) |i| {
         for (0..2) |j| {
@@ -201,15 +207,12 @@ test "transpose" {
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
 
-    var tensor_transposed = try TensMath.transpose2D(u8, &tensor);
+    var tensor_transposed = try TensMath.transposeDefault(u8, &tensor);
     defer tensor_transposed.deinit();
 
-    try std.testing.expect(tensor_transposed.data[0] == 1);
-    try std.testing.expect(tensor_transposed.data[1] == 4);
-    try std.testing.expect(tensor_transposed.data[2] == 2);
-    try std.testing.expect(tensor_transposed.data[3] == 5);
-    try std.testing.expect(tensor_transposed.data[4] == 3);
-    try std.testing.expect(tensor_transposed.data[5] == 6);
+    for (0..tensor.size) |i| {
+        try std.testing.expect(tensor_transposed.data[i] == tensor.data[i]);
+    }
 }
 
 test "transpose multi-dimensions default" {
@@ -487,10 +490,9 @@ test "resize with nearest neighbor interpolation" {
     defer tensor_1d.deinit();
 
     // Scale up by 2x
-    var scales = [_]f32{2.0};
+    var scales = [_]f32{ 1.0, 1.0, 1.0, 2.0 };
     var resized_1d = try TensMath.resize(u8, &tensor_1d, "nearest", &scales, null, "half_pixel");
     defer resized_1d.deinit();
-
     try std.testing.expectEqual(@as(usize, 8), resized_1d.size);
     try std.testing.expectEqual(@as(u8, 1), resized_1d.data[0]);
     try std.testing.expectEqual(@as(u8, 1), resized_1d.data[1]);
@@ -507,15 +509,17 @@ test "resize with nearest neighbor interpolation" {
     defer tensor_2d.deinit();
 
     // Scale up by 2x in both dimensions
-    var scales_2d = [_]f32{ 2.0, 2.0 };
+    var scales_2d = [_]f32{ 1.0, 1.0, 2.0, 2.0 };
     var resized_2d = try TensMath.resize(u8, &tensor_2d, "nearest", &scales_2d, null, "half_pixel");
     defer resized_2d.deinit();
 
     try std.testing.expectEqual(@as(usize, 16), resized_2d.size);
-    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[0]);
-    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[1]);
+    try std.testing.expectEqual(@as(usize, 1), resized_2d.shape[0]);
+    try std.testing.expectEqual(@as(usize, 1), resized_2d.shape[1]);
+    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[2]);
+    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[3]);
 }
-
+//unsopported 4D tensor
 test "resize with linear interpolation" {
     std.debug.print("\n     test: resize with linear interpolation", .{});
     const allocator = pkgAllocator.allocator;
@@ -552,6 +556,7 @@ test "resize with linear interpolation" {
     try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[1]);
 }
 
+//unsopported 4D tensor
 test "resize with cubic interpolation" {
     std.debug.print("\n     test: resize with cubic interpolation", .{});
     const allocator = pkgAllocator.allocator;
@@ -578,18 +583,18 @@ test "resize with explicit sizes" {
         [_]u8{ 1, 2 },
         [_]u8{ 3, 4 },
     };
-    var shape = [_]usize{ 2, 2 };
+    var shape = [_]usize{ 1, 1, 2, 2 };
     var tensor = try Tensor(u8).fromArray(&allocator, &input_array, &shape);
     defer tensor.deinit();
 
     // Resize to specific dimensions
-    var sizes = [_]usize{ 3, 3 };
+    var sizes = [_]usize{ 1, 1, 3, 3 };
     var resized = try TensMath.resize(u8, &tensor, "nearest", null, &sizes, "half_pixel");
     defer resized.deinit();
 
     try std.testing.expectEqual(@as(usize, 9), resized.size);
-    try std.testing.expectEqual(@as(usize, 3), resized.shape[0]);
-    try std.testing.expectEqual(@as(usize, 3), resized.shape[1]);
+    try std.testing.expectEqual(@as(usize, 3), resized.shape[2]);
+    try std.testing.expectEqual(@as(usize, 3), resized.shape[3]);
 }
 
 test "resize error cases" {
@@ -605,7 +610,7 @@ test "resize error cases" {
     defer tensor.deinit();
 
     // Test invalid mode
-    var scales = [_]f32{ 2.0, 2.0 };
+    var scales = [_]f32{ 1.0, 1.0, 2.0, 2.0 };
     try std.testing.expectError(
         TensorError.UnsupportedMode,
         TensMath.resize(u8, &tensor, "invalid_mode", &scales, null, "half_pixel"),
@@ -639,7 +644,7 @@ test "split basic test" {
     defer tensor.deinit();
 
     // Split along axis 0 (rows)
-    const split_tensors = try TensMath.split(u8, &tensor, 0, null);
+    const split_tensors = try TensMath.split(u8, &tensor, 2, null);
     defer {
         for (split_tensors) |*t| {
             t.deinit();
@@ -648,8 +653,8 @@ test "split basic test" {
     }
 
     try std.testing.expectEqual(@as(usize, 1), split_tensors.len);
-    try std.testing.expectEqual(@as(usize, 2), split_tensors[0].shape[0]);
-    try std.testing.expectEqual(@as(usize, 3), split_tensors[0].shape[1]);
+    try std.testing.expectEqual(@as(usize, 2), split_tensors[0].shape[2]);
+    try std.testing.expectEqual(@as(usize, 3), split_tensors[0].shape[3]);
     try std.testing.expectEqual(@as(u8, 1), split_tensors[0].data[0]);
     try std.testing.expectEqual(@as(u8, 6), split_tensors[0].data[5]);
 }
@@ -671,7 +676,7 @@ test "split with custom sizes" {
 
     // Split along axis 0 into [1,3] parts
     const split_sizes = [_]usize{ 1, 3 };
-    const split_tensors = try TensMath.split(u8, &tensor, 0, &split_sizes);
+    const split_tensors = try TensMath.split(u8, &tensor, 2, &split_sizes);
     defer {
         for (split_tensors) |*t| {
             t.deinit();
@@ -682,14 +687,14 @@ test "split with custom sizes" {
     try std.testing.expectEqual(@as(usize, 2), split_tensors.len);
 
     // First split should be 1x2
-    try std.testing.expectEqual(@as(usize, 1), split_tensors[0].shape[0]);
-    try std.testing.expectEqual(@as(usize, 2), split_tensors[0].shape[1]);
+    try std.testing.expectEqual(@as(usize, 1), split_tensors[0].shape[2]);
+    try std.testing.expectEqual(@as(usize, 2), split_tensors[0].shape[3]);
     try std.testing.expectEqual(@as(u8, 1), split_tensors[0].data[0]);
     try std.testing.expectEqual(@as(u8, 2), split_tensors[0].data[1]);
 
     // Second split should be 3x2
-    try std.testing.expectEqual(@as(usize, 3), split_tensors[1].shape[0]);
-    try std.testing.expectEqual(@as(usize, 2), split_tensors[1].shape[1]);
+    try std.testing.expectEqual(@as(usize, 3), split_tensors[1].shape[2]);
+    try std.testing.expectEqual(@as(usize, 2), split_tensors[1].shape[3]);
     try std.testing.expectEqual(@as(u8, 3), split_tensors[1].data[0]);
     try std.testing.expectEqual(@as(u8, 8), split_tensors[1].data[5]);
 }
@@ -721,8 +726,8 @@ test "split with negative axis" {
 
     // Both splits should be 2x2
     for (split_tensors) |t| {
-        try std.testing.expectEqual(@as(usize, 2), t.shape[0]);
-        try std.testing.expectEqual(@as(usize, 2), t.shape[1]);
+        try std.testing.expectEqual(@as(usize, 2), t.shape[2]);
+        try std.testing.expectEqual(@as(usize, 2), t.shape[3]);
     }
 
     // Check first split

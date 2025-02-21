@@ -77,7 +77,7 @@ test "Convolution 4D Input with 2x2x2x2 Kernel shape" {
 
     var inputbias: [2]f32 = [_]f32{ 1, 1 }; //batches: 2, filters:2
 
-    var bias_shape: [1]usize = [_]usize{2};
+    var bias_shape: [2]usize = [_]usize{ 1, 2 };
     var bias = try Tensor(f32).fromArray(&allocator, &inputbias, &bias_shape);
     defer bias.deinit();
     var input_tensor = try Tensor(f32).fromArray(&allocator, &inputArray, &input_shape);
@@ -145,7 +145,7 @@ test "convolution_backward_biases() " {
 
     var d_val_shape: [4]usize = [_]usize{ 2, 2, 2, 2 };
     var d_val_array: [2][2][2][2]f32 = [_][2][2][2]f32{
-        // Primo batch
+        // First batch
         [_][2][2]f32{
             [_][2]f32{
                 [_]f32{ 3.0, 5.0 },
@@ -156,7 +156,7 @@ test "convolution_backward_biases() " {
                 [_]f32{ 1.0, 1.0 },
             },
         },
-        // Secondo batch
+        // Second batch
         [_][2][2]f32{
             [_][2]f32{
                 [_]f32{ 14.0, 14.0 },

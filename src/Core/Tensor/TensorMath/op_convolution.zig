@@ -155,7 +155,7 @@ pub fn convolution_backward_biases(comptime T: type, dValues: *Tensor(T)) !Tenso
                 }
             }
         }
-        try bias_gradients.set_at(&[_]usize{oc}, sum);
+        try bias_gradients.set_at(&[_]usize{ 0, 0, 0, oc }, sum);
     }
 
     return bias_gradients;

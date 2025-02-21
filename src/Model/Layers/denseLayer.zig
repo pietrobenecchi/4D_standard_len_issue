@@ -129,7 +129,7 @@ pub fn DenseLayer(comptime T: type) type {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
             // Check input dimensions
-            if (input.shape.len != 2) return LayerError.LayerDimensionsInvalid;
+            if (input.shape.len != 4) return LayerError.LayerDimensionsInvalid;
             if (input.shape[1] != self.n_inputs) return LayerError.InputTensorWrongShape;
 
             // Dealloc self.input if already allocated

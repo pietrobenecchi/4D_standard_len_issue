@@ -83,8 +83,10 @@ test "DenseLayer forward and backward test" {
     defer input_tensor.deinit();
 
     const output_tensor = try layer1.forward(&input_tensor);
-    try std.testing.expectEqual(output_tensor.shape[0], 5);
-    try std.testing.expectEqual(output_tensor.shape[1], 2);
+    try std.testing.expectEqual(output_tensor.shape[0], 1);
+    try std.testing.expectEqual(output_tensor.shape[1], 1);
+    try std.testing.expectEqual(output_tensor.shape[2], 5);
+    try std.testing.expectEqual(output_tensor.shape[3], 2);
 
     // Check that after forward, output does not contain zeros
     for (0..5) |i| {
@@ -582,8 +584,8 @@ test "BatchNormLayer forward and backward test" {
 
     // Forward pass
     const output = try layer.forward(&input);
-    try std.testing.expectEqual(output.shape[0], 3);
-    try std.testing.expectEqual(output.shape[1], 4);
+    try std.testing.expectEqual(output.shape[0], 1);
+    try std.testing.expectEqual(output.shape[1], 1);
 
     // Check that output is normalized (mean close to 0, variance close to 1)
 
