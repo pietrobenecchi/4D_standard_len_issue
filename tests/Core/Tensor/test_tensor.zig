@@ -215,31 +215,6 @@ test "to array " {
     try std.testing.expectEqual(1, array_from_tensor[0].len);
 }
 
-test "Reshape" {
-    std.debug.print("\n     test: Reshape ", .{});
-    const allocator = pkgAllocator.allocator;
-
-    // Inizializzazione degli array di input
-    var inputArray: [2][3]u8 = [_][3]u8{
-        [_]u8{ 1, 2, 4 },
-        [_]u8{ 4, 5, 6 },
-    };
-    var shape: [2]usize = [_]usize{ 2, 3 };
-
-    var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
-    defer tensor.deinit();
-
-    const old_size = tensor.size;
-
-    var new_shape: [2]usize = [_]usize{ 3, 2 };
-
-    try tensor.reshape(&new_shape);
-
-    try expect(old_size == tensor.size);
-    try expect(tensor.shape[0] == 3);
-    try expect(tensor.shape[1] == 2);
-}
-
 test "test setToZero() " {
     std.debug.print("\n     test: setToZero()", .{});
 

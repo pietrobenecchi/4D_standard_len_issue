@@ -15,54 +15,75 @@ const BLOCK_SIZE_K: usize = 32;
 const DEFAULT_VECTOR_WIDTH: usize = std.simd.suggestVectorLength(f32) orelse 4;
 const UNROLL_FACTOR: usize = 4;
 
-pub inline fn dot_product_tensor(comptime inputType: type, comptime outputType: type, t1: *const Tensor(inputType), t2: *const Tensor(inputType)) !Tensor(outputType) {
-    const nDimT1 = t1.shape.len;
-    const nDimT2 = t2.shape.len;
-    if (nDimT1 != nDimT2) return TensorMathError.InputTensorDifferentShape;
-    if (t1.shape[nDimT1 - 1] != t2.shape[nDimT1 - 2]) return TensorMathError.InputTensorsWrongShape;
-    if (nDimT1 < 2) return TensorMathError.InputTensorsWrongShape;
+/// Performs classic matrix multiplication on given tensors using the last 2 dimensions
+pub inline fn mat_mul(comptime T: anytype, A: *const Tensor(T), B: *const Tensor(T)) !Tensor(T) {
 
-    // Type validation
-    if (@TypeOf(outputType) != @TypeOf(inputType)) {
-        if (@bitSizeOf(outputType) <= 16) {
-            if (@bitSizeOf(outputType) <= (@bitSizeOf(inputType) * 2)) return TensorMathError.TooSmallOutputType;
-        } else {
-            if (@bitSizeOf(outputType) <= @bitSizeOf(inputType)) return TensorMathError.TooSmallOutputType;
-        }
-    }
+    // The two tensors needs to have the same dimensions N
+    if (A.shape.len != B.shape.len) return TensorMathError.InputTensorDifferentShape;
 
-    const allocator = pkg_allocator;
-    var out_shape = try allocator.alloc(usize, nDimT1);
-    defer allocator.free(out_shape);
-    errdefer allocator.free(out_shape);
+    const dim_num = A.shape.len;
 
-    for (0..(nDimT1 - 2)) |i| {
-        out_shape[i] = t1.shape[i];
-    }
-    out_shape[nDimT1 - 2] = t1.shape[nDimT1 - 2];
-    out_shape[nDimT1 - 1] = t2.shape[nDimT1 - 1];
+    // The last dimension (number of cols) of A must be equal to the second last dimension (number of rows) of B
+    if (A.shape[dim_num - 1] != B.shape[dim_num - 2]) return TensorMathError.InputTensorsWrongShape;
 
-    const M = t1.shape[nDimT1 - 2];
-    const N = t2.shape[nDimT1 - 1];
-    const K = t1.shape[nDimT1 - 1];
+    // The input tensors must have at least 2 dimensions
+    if (dim_num < 2) return TensorMathError.InputTensorsWrongShape;
 
+    // Create output tensor
+
+    const M = A.shape[dim_num - 2];
+    const N = B.shape[dim_num - 1];
+    const K = A.shape[dim_num - 1];
+
+    // Check if the input tensors are empty
     if (M * N == 0 or K == 0) {
-        allocator.free(out_shape);
         return TensorMathError.InputTensorsWrongShape;
     }
 
-    var out_tensor = try Tensor(outputType).fromShape(&allocator, out_shape);
-    errdefer out_tensor.deinit();
+    // Setup output tensor shape
 
-    @memset(out_tensor.data, 0);
+    const allocator = pkg_allocator;
+    var out_shape = try allocator.alloc(usize, dim_num);
+    defer allocator.free(out_shape);
+    errdefer allocator.free(out_shape);
 
-    const Vec = @Vector(DEFAULT_VECTOR_WIDTH, inputType);
-    const VecOut = @Vector(DEFAULT_VECTOR_WIDTH, outputType);
+    // Copy all dimensions except the last two
+    for (0..(dim_num - 2)) |i| {
+        out_shape[i] = A.shape[i];
+    }
+
+    // Set the last two dimensions to the dimensions of the input tensors
+    out_shape[dim_num - 2] = A.shape[dim_num - 2];
+    out_shape[dim_num - 1] = B.shape[dim_num - 1];
+
+    // Create output tensor
+
+    var Y = try Tensor(T).fromShape(&allocator, out_shape);
+    errdefer Y.deinit();
+
+    @memset(Y.data, 0); // probably reduntant as fromShape already fills the tensor with 0
+
+    try lean_mat_mul(T, A, B, &Y);
+
+    return Y;
+}
+
+/// Lean version of dot_product_tensor, output Tensor must be preconstructed and 0 filled
+pub inline fn lean_mat_mul(comptime T: anytype, A: *const Tensor(T), B: *const Tensor(T), Y: *Tensor(T)) !void {
+    const dim_num = A.shape.len;
+
+    const M = A.shape[dim_num - 2];
+    const N = B.shape[dim_num - 1];
+    const K = A.shape[dim_num - 1];
+
+    // SIMD vector type
+    const Vec = @Vector(DEFAULT_VECTOR_WIDTH, T);
+    const VecOut = @Vector(DEFAULT_VECTOR_WIDTH, T);
 
     // Get pointers for faster access
-    const t1_ptr = t1.data.ptr;
-    const t2_ptr = t2.data.ptr;
-    const out_ptr = out_tensor.data.ptr;
+    const A_ptr = A.data.ptr;
+    const B_ptr = B.data.ptr;
+    const Y_ptr = Y.data.ptr;
 
     // Main matrix multiplication loop with SIMD
     var i: usize = 0;
@@ -78,18 +99,18 @@ pub inline fn dot_product_tensor(comptime inputType: type, comptime outputType: 
             // Inner product with SIMD
             var k: usize = 0;
             while (k < K) : (k += 1) {
-                const a_val = t1_ptr[row_offset + k];
+                const a_val = A_ptr[row_offset + k];
                 const b_offset = k * N + j;
 
                 // Load B values directly into vector
                 var b_vec: Vec = undefined;
                 comptime var v: usize = 0;
                 inline while (v < DEFAULT_VECTOR_WIDTH) : (v += 1) {
-                    b_vec[v] = t2_ptr[b_offset + v];
+                    b_vec[v] = B_ptr[b_offset + v];
                 }
 
                 // Convert and multiply
-                const a_vec: VecOut = @splat(@as(outputType, a_val));
+                const a_vec: VecOut = @splat(@as(T, a_val));
                 const b_vec_out: VecOut = @as(VecOut, b_vec);
                 sum_vec += a_vec * b_vec_out;
             }
@@ -97,25 +118,23 @@ pub inline fn dot_product_tensor(comptime inputType: type, comptime outputType: 
             // Store result
             comptime var v: usize = 0;
             inline while (v < DEFAULT_VECTOR_WIDTH) : (v += 1) {
-                out_ptr[out_idx + v] = sum_vec[v];
+                Y_ptr[out_idx + v] = sum_vec[v];
             }
         }
 
         // Handle remaining columns
         while (j < N) : (j += 1) {
-            var sum: outputType = 0;
+            var sum: T = 0;
             const out_idx = out_offset + j;
 
             var k: usize = 0;
             while (k < K) : (k += 1) {
-                sum += @as(outputType, t1_ptr[row_offset + k]) *
-                    @as(outputType, t2_ptr[k * N + j]);
+                sum += @as(T, A_ptr[row_offset + k]) *
+                    @as(T, B_ptr[k * N + j]);
             }
-            out_ptr[out_idx] = sum;
+            Y_ptr[out_idx] = sum;
         }
     }
-
-    return out_tensor;
 }
 
 /// Function that performs the multiplication of two tensors used in a recursive way to handle multidimensional tensors
@@ -197,7 +216,7 @@ pub fn benchmark_dot_product() !void {
 
     // Benchmark SIMD version
     const timer = try std.time.Timer.start();
-    var result1 = try dot_product_tensor(f32, f32, &t1, &t2);
+    var result1 = try mat_mul(f32, f32, &t1, &t2);
     defer result1.deinit();
     const simd_time = timer.lap();
 

@@ -30,7 +30,7 @@ pub fn build(b: *std.Build) void {
 
     // Create modules from the source files in the `src/Core/Tensor/TensorMath` directory.
     const tensor_math_mod = b.createModule(.{ .root_source_file = b.path("src/Core/Tensor/TensorMath/tensor_math_standard.zig") });
-    // const tensor_math_lean_mod = b.createModule(.{ .root_source_file = b.path("src/Core/Tensor/TensorMath/tensor_math_lean.zig") });
+    const tensor_math_lean_mod = b.createModule(.{ .root_source_file = b.path("src/Core/Tensor/TensorMath/tensor_math_lean.zig") });
 
     // Create modules from the source files in the `src/Model/` directory.
     const loss_mod = b.createModule(.{ .root_source_file = b.path("src/Model/lossFunction.zig") });
@@ -51,6 +51,9 @@ pub fn build(b: *std.Build) void {
 
     // code generation module
     const codegen_mod = b.createModule(.{ .root_source_file = b.path("src/codeGen/codeGen_skeleton.zig") });
+
+    //generated predict() code
+    //const predict_mod = b.createModule(.{ .root_source_file = b.path("src/codeGen/static_lib.zig") });
 
     // Create modules from the source files in the `src/DataHandler/` directory.
     const dataloader_mod = b.createModule(.{ .root_source_file = b.path("src/DataHandler/dataLoader.zig") });
@@ -201,6 +204,7 @@ pub fn build(b: *std.Build) void {
     codegen_mod.addImport("tensor", tensor_mod);
     codegen_mod.addImport("onnx", onnx_mod);
     codegen_mod.addImport("pkgAllocator", allocator_mod);
+    codegen_mod.addImport("tensor_math", tensor_math_mod);
 
     // ************************************************MAIN EXECUTABLE************************************************
 
@@ -213,8 +217,6 @@ pub fn build(b: *std.Build) void {
     });
 
     exe.linkLibC();
-
-    // ************************************************MAIN DEPENDENCIES************************************************
 
     // Add necessary imports for the main executable.
     exe.root_module.addImport("tensor", tensor_mod);
@@ -252,8 +254,6 @@ pub fn build(b: *std.Build) void {
 
     codeGen_exe.linkLibC();
 
-    // ************************************************CODEGEN DEPENDENCIES************************************************
-
     // Add necessary imports for the executable.
     codeGen_exe.root_module.addImport("onnx", onnx_mod);
     codeGen_exe.root_module.addImport("tensor_math", tensor_math_mod);
@@ -272,24 +272,20 @@ pub fn build(b: *std.Build) void {
     const codegen_step = b.step("codegen", " code generation");
     codegen_step.dependOn(&codegen_cmd.step);
 
-    // ************************************************STATIC LIBRARY************************************************
+    // ************************************************ STATIC LIBRARY CREATION ************************************************
 
-    const tensor_math_lib = b.addStaticLibrary(.{
-        .name = "tensor_math",
-        .root_source_file = b.path("src/Core/Tensor/TensorMath/c_api.zig"),
+    const static_lib = b.addStaticLibrary(.{
+        .name = "static_lib",
+        .root_source_file = b.path("src/codeGen/static_lib.zig"),
         .target = target,
         .optimize = optimize,
     });
+    static_lib.linkLibC();
+    static_lib.root_module.addImport("tensor", tensor_mod);
+    static_lib.root_module.addImport("tensor_math", tensor_math_mod);
+    static_lib.root_module.addImport("pkgAllocator", allocator_mod);
 
-    tensor_math_lib.linkLibC();
-    tensor_math_lib.root_module.addImport("tensor", tensor_mod);
-    tensor_math_lib.root_module.addImport("typeC", typeConv_mod);
-    tensor_math_lib.root_module.addImport("errorHandler", errorHandler_mod);
-    tensor_math_lib.root_module.addImport("layer", layer_mod);
-    tensor_math_lib.root_module.addImport("pkgAllocator", allocator_mod);
-    tensor_math_lib.root_module.addImport("tensor_m", tensor_math_mod);
-
-    const install_lib_step = b.addInstallArtifact(tensor_math_lib, .{});
+    const install_lib_step = b.addInstallArtifact(static_lib, .{});
     const lib_step = b.step("lib", "Compile tensor_math static library");
     lib_step.dependOn(&install_lib_step.step);
 
@@ -297,7 +293,7 @@ pub fn build(b: *std.Build) void {
 
     // Define unified tests for the project.
     const unit_tests = b.addTest(.{
-        .name = "lib",
+        .name = "test_lib",
         .root_source_file = b.path("tests/test_lib.zig"),
         .target = target,
         .optimize = optimize,
@@ -324,6 +320,7 @@ pub fn build(b: *std.Build) void {
     unit_tests.root_module.addImport("errorHandler", errorHandler_mod);
     unit_tests.root_module.addImport("model_import_export", modelImportExport_mod);
     unit_tests.root_module.addImport("pkgAllocator", allocator_mod);
+    unit_tests.root_module.addImport("tensor_math_lean", tensor_math_lean_mod);
 
     unit_tests.linkLibC();
 
