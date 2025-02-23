@@ -14,8 +14,7 @@ pub fn normalize(comptime T: anytype, tensor: *Tensor(T), normalizationType: Nor
         else => try multidimNormalizeUnityBased(T, tensor),
     }
 }
-
-/// Normalize each row in a multidimensional tensor
+// Normalize each row in a multidimensional tensor
 fn multidimNormalizeUnityBased(comptime T: anytype, tensor: *Tensor(T)) !void {
     // --- Type Checks ---
     // Ensure that T is a floating-point type

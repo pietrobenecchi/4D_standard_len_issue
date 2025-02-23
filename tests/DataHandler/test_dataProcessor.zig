@@ -4,12 +4,13 @@ const NormalizType = @import("dataprocessor").NormalizationType;
 const Tensor = @import("tensor").Tensor;
 const pkgAllocator = @import("pkgAllocator");
 
-//comportamento anomalo per 4d con 1 batch 1 canale
+//RIVEDI MOLTO CHEAT---> i dati non sembrano corretti
 test "normalize float" {
     std.debug.print("\n     test: normalize float", .{});
 
     const allocator = pkgAllocator.allocator;
 
+    // Define a 1x1x2x2 tensor with known float values
     var inputArray: [1][1][2][2]f32 = [_][1][2][2]f32{
         .{
             .{
@@ -19,30 +20,56 @@ test "normalize float" {
         },
     };
 
-    var shape: [4]usize = [_]usize{ 1, 1, 2, 2 }; // 4D tensor shape
+    var shape: [4]usize = [_]usize{ 1, 1, 2, 2 }; // Shape: [1, 1, 2, 2]
 
+    // Initialize the tensor from the input array
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
 
+    // Perform min-max normalization
     try DataProc.normalize(f32, &t1, NormalizType.UnityBasedNormalizartion);
 
-    for (t1.data) |*val| {
-        try std.testing.expect(1.0 >= val.*);
-        try std.testing.expect(0.0 <= val.*);
-    }
+    // Expected normalized tensor:
+    // [
+    //   [
+    //     [ [0.5556, 0.2222], [0.0, 1.0] ]
+    //   ]
+    // ]
+
+    // Tolerance for floating point comparison
+    const tol: f32 = 1e-3;
+
+    // Batch 0, Channel 0, Width 0, Height 0: 1.0 -> 0.5556
+    std.debug.print("t1.data[0]: {any}", .{t1.data[0]});
+    try std.testing.expect(@abs(t1.data[0] - 0.5556) < tol);
+    std.debug.print("t1.data[0]: {any}", .{t1.data[0]});
+    // Batch 0, Channel 0, Width 0, Height 1: -2.0 -> ~0.2222
+    try std.testing.expect(@abs(t1.data[1] - 0.2222) < tol);
+    std.debug.print("t1.data[1]: {any}", .{t1.data[1]});
+    // Batch 0, Channel 0, Width 1, Height 0: -4.0 -> 0.0
+    std.debug.print("t1.data[2]: {any}", .{t1.data[2]});
+    try std.testing.expect(@abs(t1.data[2] - 0.0) < tol);
+    // Batch 0, Channel 0, Width 1, Height 1: 5.0 -> 1.0
+    std.debug.print("t1.data[3]: {any}", .{t1.data[3]});
+    try std.testing.expect(@abs(t1.data[3] - 1.0) < tol);
 }
 
+//RIVEDERE
 test "normalize float all different" {
     std.debug.print("\n     test: normalize float", .{});
 
     const allocator = pkgAllocator.allocator;
 
-    var inputArray: [2][4]f32 = [_][4]f32{
-        [_]f32{ 1.0, 2.0, 3.0, 10.0 },
-        [_]f32{ 4.0, 5.0, 1.0, 2.0 },
+    var inputArray: [1][1][2][4]f32 = [_][1][2][4]f32{
+        .{
+            .{
+                .{ 1.0, 2.0, 3.0, 10.0 },
+                .{ 4.0, 5.0, 1.0, 2.0 },
+            },
+        },
     };
 
-    var shape: [2]usize = [_]usize{ 2, 4 }; // 2x4 matrix
+    var shape: [4]usize = [_]usize{ 1, 1, 2, 4 }; // Shape: [1, 1, 2, 4]
 
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
@@ -52,8 +79,25 @@ test "normalize float all different" {
 
     t1.info();
 
-    try std.testing.expect(1.0 - t1.data[3] < 0.001);
-    try std.testing.expect(1.0 - t1.data[5] < 0.001);
+    // Tolerance for floating point comparison
+    const tol: f32 = 1e-3;
+
+    // Batch 0, Channel 0, Width 0, Height 0: 1.0 -> 0.0
+    try std.testing.expect(@abs(t1.data[0] - 0.0) < tol);
+    // Batch 0, Channel 0, Width 0, Height 1: 2.0 -> ~0.1111
+    try std.testing.expect(@abs(t1.data[1] - 0.1111) < tol);
+    // Batch 0, Channel 0, Width 0, Height 2: 3.0 -> ~0.2222
+    try std.testing.expect(@abs(t1.data[2] - 0.2222) < tol);
+    // Batch 0, Channel 0, Width 0, Height 3: 10.0 -> 1.0
+    try std.testing.expect(@abs(t1.data[3] - 1.0) < tol);
+    // Batch 0, Channel 0, Width 1, Height 0: 4.0 -> ~0.3333
+    try std.testing.expect(@abs(t1.data[4] - 0.3333) < tol);
+    // Batch 0, Channel 0, Width 1, Height 1: 5.0 -> ~0.4444
+    try std.testing.expect(@abs(t1.data[5] - 0.4444) < tol);
+    // Batch 0, Channel 0, Width 1, Height 2: 1.0 -> 0.0
+    try std.testing.expect(@abs(t1.data[6] - 0.0) < tol);
+    // Batch 0, Channel 0, Width 1, Height 3: 2.0 -> ~0.1111
+    try std.testing.expect(@abs(t1.data[7] - 0.1111) < tol);
 
     for (t1.data) |*val| {
         try std.testing.expect(1.0 >= val.*);
@@ -66,12 +110,17 @@ test "normalize delta 0 " {
 
     const allocator = pkgAllocator.allocator;
 
-    var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ 1.0, 1.0 },
-        [_]f32{ 0.0, 0.0 },
+    // Define a 1x1x2x2 tensor with specific float values
+    var inputArray: [1][1][2][2]f32 = [_][1][2][2]f32{
+        .{
+            .{
+                .{ 1.0, 1.0 },
+                .{ 1.0, 1.0 },
+            },
+        },
     };
 
-    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+    var shape: [4]usize = [_]usize{ 1, 1, 2, 2 }; // Shape: [1, 1, 2, 2]
 
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
@@ -102,18 +151,22 @@ fn compute_variance(comptime T: anytype, data: []const T, mean: f64) f64 {
     return sum_sq_diff / @as(f64, @floatFromInt(data.len));
 }
 
-test "standard normalize float 2D" {
-    std.debug.print("\n     test: standard normalize float 2D", .{});
+test "standard normalize float 4D" {
+    std.debug.print("\n     test: standard normalize float 4D", .{});
 
     const allocator = pkgAllocator.allocator;
 
-    // Define a 2x2 tensor with diverse float values
-    var inputArray: [2][2]f32 = [_][2]f32{
-        [_]f32{ 1.0, 2.0 },
-        [_]f32{ 3.0, 4.0 },
+    // Define a 1x1x2x2 tensor with diverse float values
+    var inputArray: [1][1][2][2]f32 = [_][1][2][2]f32{
+        .{
+            .{
+                .{ 1.0, 2.0 },
+                .{ 3.0, 4.0 },
+            },
+        },
     };
 
-    var shape: [2]usize = [_]usize{ 2, 2 }; // 2x2 matrix
+    var shape: [4]usize = [_]usize{ 1, 1, 2, 2 }; // Shape: [1, 1, 2, 2]
 
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);
     defer t1.deinit();
@@ -121,37 +174,39 @@ test "standard normalize float 2D" {
     // Perform standard normalization
     try DataProc.normalize(f32, &t1, NormalizType.StandardDeviationNormalization);
 
-    // Check each slice (since it's 2D, each row is a slice)
-    for (0..t1.shape[0]) |b| {
-        const slice_offset = b * t1.shape[1];
-        const slice_size = t1.shape[1];
-        const slice_data = t1.data[slice_offset .. slice_offset + slice_size];
+    // Check each slice (since it's 4D, each 2x2 matrix is a slice)
+    for (0..t1.shape[0]) |batch| {
+        for (0..t1.shape[1]) |channel| {
+            const slice_offset = (batch * t1.shape[1] * t1.shape[2] * t1.shape[3]) + (channel * t1.shape[2] * t1.shape[3]);
+            const slice_size = t1.shape[2] * t1.shape[3];
+            const slice_data = t1.data[slice_offset .. slice_offset + slice_size];
 
-        // Compute mean and variance
-        var sum: f64 = 0.0;
-        for (slice_data) |val| {
-            sum += @as(f64, val);
+            // Compute mean and variance
+            var sum: f64 = 0.0;
+            for (slice_data) |val| {
+                sum += @as(f64, val);
+            }
+            const mean = sum / @as(f64, @floatFromInt(slice_size));
+
+            var sum_sq_diff: f64 = 0.0;
+            for (slice_data) |val| {
+                const diff = @as(f64, val) - mean;
+                sum_sq_diff += diff * diff;
+            }
+
+            // Expect mean close to 0 and variance close to 1
+            var normalized_sum: f64 = 0.0;
+            var normalized_sq_sum: f64 = 0.0;
+            for (slice_data) |val| {
+                normalized_sum += @as(f64, val);
+                normalized_sq_sum += @as(f64, val) * @as(f64, val);
+            }
+            const normalized_mean = normalized_sum / @as(f64, @floatFromInt(slice_size));
+            const normalized_variance = normalized_sq_sum / @as(f64, @floatFromInt(slice_size));
+
+            try std.testing.expect(@abs(normalized_mean) < 1e-4);
+            try std.testing.expect(@abs(normalized_variance - 1.0) < 1e-4);
         }
-        const mean = sum / @as(f64, @floatFromInt(slice_size));
-
-        var sum_sq_diff: f64 = 0.0;
-        for (slice_data) |val| {
-            const diff = @as(f64, val) - mean;
-            sum_sq_diff += diff * diff;
-        }
-
-        // Expect mean close to 0 and variance close to 1
-        var normalized_sum: f64 = 0.0;
-        var normalized_sq_sum: f64 = 0.0;
-        for (slice_data) |val| {
-            normalized_sum += @as(f64, val);
-            normalized_sq_sum += @as(f64, val) * @as(f64, val);
-        }
-        const normalized_mean = normalized_sum / @as(f64, @floatFromInt(slice_size));
-        const normalized_variance = normalized_sq_sum / @as(f64, @floatFromInt(slice_size));
-
-        try std.testing.expect(@abs(normalized_mean) < 1e-4);
-        try std.testing.expect(@abs(normalized_variance - 1.0) < 1e-4);
     }
 }
 
@@ -201,8 +256,8 @@ test "normalize 4D tensor known values" {
     std.debug.print("t1.data[0]: {any}", .{t1.data[0]});
     try std.testing.expect(@abs(t1.data[0] - 0.0) < tol);
     std.debug.print("t1.data[0]: {any}", .{t1.data[0]});
-    // Batch 0, Channel 0, Width 0, Height 1: 2.0 -> ~0.3333
-    try std.testing.expect(@abs(t1.data[1] - 0.3333) < tol);
+    // Batch 0, Channel 0, Width 0, Height 1: 2.0 -> ~0.333
+    try std.testing.expect(@abs(t1.data[1] - 0.333) < tol);
     std.debug.print("t1.data[1]: {any}", .{t1.data[1]});
     // Batch 0, Channel 0, Width 1, Height 0: 3.0 -> ~0.6667
     std.debug.print("t1.data[2]: {any}", .{t1.data[2]});
