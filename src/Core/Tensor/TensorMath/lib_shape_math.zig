@@ -155,10 +155,9 @@ fn nearest_interpolation(comptime T: type, self: *Tensor(T), output_data: []T, o
         }
     }
 }
-
 fn linear_interpolation(comptime T: type, self: *Tensor(T), output_data: []T, output_shape: []usize, coordinate_transformation_mode: []const u8) !void {
-    // For now, implement only for 1D and 2D tensors
-    if (self.shape.len > 2) return TensorError.UnsupportedDimension;
+    // For now, implement only for 1D, 2D, and 4D tensors
+    if (self.shape.len != 1 and self.shape.len != 2 and self.shape.len != 4) return TensorError.UnsupportedDimension;
 
     const input_strides = try self.getStrides();
     defer self.allocator.free(input_strides);
@@ -172,11 +171,16 @@ fn linear_interpolation(comptime T: type, self: *Tensor(T), output_data: []T, ou
         var output_idx: usize = 0;
         if (output_shape.len == 1) {
             output_idx = output_indices[0];
-        } else {
+        } else if (output_shape.len == 2) {
             output_idx = output_indices[0] * output_shape[1] + output_indices[1];
+        } else if (output_shape.len == 4) {
+            output_idx = output_indices[0] * output_shape[1] * output_shape[2] * output_shape[3] +
+                output_indices[1] * output_shape[2] * output_shape[3] +
+                output_indices[2] * output_shape[3] +
+                output_indices[3];
         }
 
-        // Calculate interpolation coordinates
+        // Calculate interpolation coordinates for each dimension
         var x: f32 = undefined;
         if (std.mem.eql(u8, coordinate_transformation_mode, "half_pixel")) {
             x = (@as(f32, @floatFromInt(output_indices[0])) + 0.5) * @as(f32, @floatFromInt(self.shape[0])) / @as(f32, @floatFromInt(output_shape[0])) - 0.5;
@@ -196,7 +200,7 @@ fn linear_interpolation(comptime T: type, self: *Tensor(T), output_data: []T, ou
             const v1 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1]))));
             const interpolated = v0 * (1 - dx) + v1 * dx;
             output_data[output_idx] = @as(T, @intFromFloat(@round(interpolated)));
-        } else {
+        } else if (self.shape.len == 2) {
             var y: f32 = undefined;
             if (std.mem.eql(u8, coordinate_transformation_mode, "half_pixel")) {
                 y = (@as(f32, @floatFromInt(output_indices[1])) + 0.5) * @as(f32, @floatFromInt(self.shape[1])) / @as(f32, @floatFromInt(output_shape[1])) - 0.5;
@@ -222,6 +226,85 @@ fn linear_interpolation(comptime T: type, self: *Tensor(T), output_data: []T, ou
             const tmp4 = v11 * dx * dy;
 
             const interpolated = tmp1 + tmp2 + tmp3 + tmp4;
+            output_data[output_idx] = @as(T, @intFromFloat(@round(interpolated)));
+        } else if (self.shape.len == 4) {
+            var y: f32 = undefined;
+            if (std.mem.eql(u8, coordinate_transformation_mode, "half_pixel")) {
+                y = (@as(f32, @floatFromInt(output_indices[1])) + 0.5) * @as(f32, @floatFromInt(self.shape[1])) / @as(f32, @floatFromInt(output_shape[1])) - 0.5;
+            } else if (std.mem.eql(u8, coordinate_transformation_mode, "align_corners")) {
+                y = @as(f32, @floatFromInt(output_indices[1])) * @as(f32, @floatFromInt(self.shape[1] - 1)) / @as(f32, @floatFromInt(output_shape[1] - 1));
+            } else { // asymmetric
+                y = @as(f32, @floatFromInt(output_indices[1])) * @as(f32, @floatFromInt(self.shape[1])) / @as(f32, @floatFromInt(output_shape[1]));
+            }
+
+            const y_floor = @floor(y);
+            const y0 = @as(usize, @intFromFloat(@max(0, y_floor)));
+            const y1 = @min(y0 + 1, self.shape[1] - 1);
+            const dy = y - y_floor;
+
+            var z: f32 = undefined;
+            if (std.mem.eql(u8, coordinate_transformation_mode, "half_pixel")) {
+                z = (@as(f32, @floatFromInt(output_indices[2])) + 0.5) * @as(f32, @floatFromInt(self.shape[2])) / @as(f32, @floatFromInt(output_shape[2])) - 0.5;
+            } else if (std.mem.eql(u8, coordinate_transformation_mode, "align_corners")) {
+                z = @as(f32, @floatFromInt(output_indices[2])) * @as(f32, @floatFromInt(self.shape[2] - 1)) / @as(f32, @floatFromInt(output_shape[2] - 1));
+            } else { // asymmetric
+                z = @as(f32, @floatFromInt(output_indices[2])) * @as(f32, @floatFromInt(self.shape[2])) / @as(f32, @floatFromInt(output_shape[2]));
+            }
+
+            const z_floor = @floor(z);
+            const z0 = @as(usize, @intFromFloat(@max(0, z_floor)));
+            const z1 = @min(z0 + 1, self.shape[2] - 1);
+            const dz = z - z_floor;
+
+            var w: f32 = undefined;
+            if (std.mem.eql(u8, coordinate_transformation_mode, "half_pixel")) {
+                w = (@as(f32, @floatFromInt(output_indices[3])) + 0.5) * @as(f32, @floatFromInt(self.shape[3])) / @as(f32, @floatFromInt(output_shape[3])) - 0.5;
+            } else if (std.mem.eql(u8, coordinate_transformation_mode, "align_corners")) {
+                w = @as(f32, @floatFromInt(output_indices[3])) * @as(f32, @floatFromInt(self.shape[3] - 1)) / @as(f32, @floatFromInt(output_shape[3] - 1));
+            } else { // asymmetric
+                w = @as(f32, @floatFromInt(output_indices[3])) * @as(f32, @floatFromInt(self.shape[3])) / @as(f32, @floatFromInt(output_shape[3]));
+            }
+
+            const w_floor = @floor(w);
+            const w0 = @as(usize, @intFromFloat(@max(0, w_floor)));
+            const w1 = @min(w0 + 1, self.shape[3] - 1);
+            const dw = w - w_floor;
+
+            const v0000 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w0]))));
+            const v0001 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w1]))));
+            const v0010 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w0]))));
+            const v0011 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w1]))));
+            const v0100 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w0]))));
+            const v0101 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w1]))));
+            const v0110 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w0]))));
+            const v0111 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x0 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w1]))));
+            const v1000 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w0]))));
+            const v1001 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w1]))));
+            const v1010 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w0]))));
+            const v1011 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y0 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w1]))));
+            const v1100 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w0]))));
+            const v1101 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z0 * self.shape[3] + w1]))));
+            const v1110 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w0]))));
+            const v1111 = @as(f32, @floatFromInt(@as(i32, @intCast(self.data[x1 * self.shape[1] * self.shape[2] * self.shape[3] + y1 * self.shape[2] * self.shape[3] + z1 * self.shape[3] + w1]))));
+
+            const tmp1 = v0000 * (1 - dx) * (1 - dy) * (1 - dz) * (1 - dw);
+            const tmp2 = v0001 * (1 - dx) * (1 - dy) * (1 - dz) * dw;
+            const tmp3 = v0010 * (1 - dx) * (1 - dy) * dz * (1 - dw);
+            const tmp4 = v0011 * (1 - dx) * (1 - dy) * dz * dw;
+            const tmp5 = v0100 * (1 - dx) * dy * (1 - dz) * (1 - dw);
+            const tmp6 = v0101 * (1 - dx) * dy * (1 - dz) * dw;
+            const tmp7 = v0110 * (1 - dx) * dy * dz * (1 - dw);
+            const tmp8 = v0111 * (1 - dx) * dy * dz * dw;
+            const tmp9 = v1000 * dx * (1 - dy) * (1 - dz) * (1 - dw);
+            const tmp10 = v1001 * dx * (1 - dy) * (1 - dz) * dw;
+            const tmp11 = v1010 * dx * (1 - dy) * dz * (1 - dw);
+            const tmp12 = v1011 * dx * (1 - dy) * dz * dw;
+            const tmp13 = v1100 * dx * dy * (1 - dz) * (1 - dw);
+            const tmp14 = v1101 * dx * dy * (1 - dz) * dw;
+            const tmp15 = v1110 * dx * dy * dz * (1 - dw);
+            const tmp16 = v1111 * dx * dy * dz * dw;
+
+            const interpolated = tmp1 + tmp2 + tmp3 + tmp4 + tmp5 + tmp6 + tmp7 + tmp8 + tmp9 + tmp10 + tmp11 + tmp12 + tmp13 + tmp14 + tmp15 + tmp16;
             output_data[output_idx] = @as(T, @intFromFloat(@round(interpolated)));
         }
 

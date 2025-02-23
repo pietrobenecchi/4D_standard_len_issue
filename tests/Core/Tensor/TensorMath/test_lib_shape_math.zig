@@ -531,7 +531,7 @@ test "resize with linear interpolation" {
     defer tensor_1d.deinit();
 
     // Scale up by 2x
-    var scales = [_]f32{2.0};
+    var scales = [_]f32{ 1.0, 1.0, 1.0, 2.0 };
     var resized_1d = try TensMath.resize(u8, &tensor_1d, "linear", &scales, null, "half_pixel");
     defer resized_1d.deinit();
 
@@ -547,13 +547,13 @@ test "resize with linear interpolation" {
     defer tensor_2d.deinit();
 
     // Scale up by 2x in both dimensions
-    var scales_2d = [_]f32{ 2.0, 2.0 };
+    var scales_2d = [_]f32{ 1.0, 1.0, 2.0, 2.0 };
     var resized_2d = try TensMath.resize(u8, &tensor_2d, "linear", &scales_2d, null, "half_pixel");
     defer resized_2d.deinit();
 
     try std.testing.expectEqual(@as(usize, 16), resized_2d.size);
-    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[0]);
-    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[1]);
+    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[2]);
+    try std.testing.expectEqual(@as(usize, 4), resized_2d.shape[3]);
 }
 
 //unsopported 4D tensor
@@ -568,7 +568,7 @@ test "resize with cubic interpolation" {
     defer tensor_1d.deinit();
 
     // Scale down by 0.5x
-    var scales = [_]f32{0.5};
+    var scales = [_]f32{ 1.0, 1.0, 1.0, 0.5 };
     var resized_1d = try TensMath.resize(u8, &tensor_1d, "cubic", &scales, null, "half_pixel");
     defer resized_1d.deinit();
 
