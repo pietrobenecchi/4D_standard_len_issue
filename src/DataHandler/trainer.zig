@@ -88,7 +88,7 @@ pub fn TrainDataLoader(
             var predictions = try model.forward(&load.xTensor);
             defer predictions.deinit();
 
-            var shape: [2]usize = [_]usize{ load.yTensor.shape[0], 10 };
+            var shape: [2]usize = [_]usize{ load.yTensor.shape[3], 10 };
             const reshaped = try allocator.create(Tensor.Tensor(T));
             reshaped.* = try TensMath.reshape(T, predictions, &shape, null);
             predictions.deinit();

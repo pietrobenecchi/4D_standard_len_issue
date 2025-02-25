@@ -401,8 +401,8 @@ test "Complete test of the Flatten layer functionalities with first dimension un
     // Verify the output size (should be [2, 18])
     // Because input is [2,2,3,3], the last dimensions product: 2*3*3=18
     // So output.shape should be [2, 18]
-    try std.testing.expectEqual(@as(usize, 2), output.shape[0]);
-    try std.testing.expectEqual(@as(usize, 18), output.shape[1]);
+    try std.testing.expectEqual(@as(usize, 2), output.shape[2]);
+    try std.testing.expectEqual(@as(usize, 18), output.shape[3]);
 
     // Create a dummy gradient for the backward pass (same shape as output: [2, 18])
     var dValues_data = try allocator.alloc(f64, output.size);
@@ -441,7 +441,7 @@ test "Pooling layer forward and backward test (Max Pooling 2D, stride=1)" {
         4.0,  5.0,  6.0,
         40.0, 50.0, 60.0,
     };
-    var input_shape = [_]usize{ 1, 1, 3, 3 };
+    var input_shape = [_]usize{ 3, 3 };
     var input = try tensor.Tensor(f64).fromArray(allocator, &input_data, input_shape[0..]);
     defer input.deinit();
 

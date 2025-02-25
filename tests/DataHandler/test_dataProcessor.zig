@@ -9,18 +9,14 @@ test "normalize float" {
     std.debug.print("\n     test: normalize float", .{});
 
     const allocator = pkgAllocator.allocator;
-
     // Define a 1x1x2x2 tensor with known float values
-    var inputArray: [1][1][2][2]f32 = [_][1][2][2]f32{
-        .{
-            .{
-                .{ 1.0, -2.0 },
-                .{ -4.0, 5.0 },
-            },
-        },
+    // Define a 2x2 tensor with known float values
+    var inputArray: [2][2]f32 = [_][2]f32{
+        .{ 1.0, -2.0 },
+        .{ -4.0, 5.0 },
     };
 
-    var shape: [4]usize = [_]usize{ 1, 1, 2, 2 }; // Shape: [1, 1, 2, 2]
+    var shape: [2]usize = [_]usize{ 2, 2 }; // Shape: [2, 2]
 
     // Initialize the tensor from the input array
     var t1 = try Tensor(f32).fromArray(&allocator, &inputArray, &shape);

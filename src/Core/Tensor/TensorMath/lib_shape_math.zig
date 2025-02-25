@@ -551,14 +551,10 @@ pub fn get_concatenate_output_shape(tensors: []const []const usize, axis: isize)
 /// Returns a Tensor self transposed. Does not modify self.
 /// It sobstitute init(), but defer yourTensor.deinit() is still necessary.
 pub fn transpose2D(comptime T: type, t: *Tensor(T)) !Tensor(T) {
-    if (t.shape.len != 2) {
-        return error.InvalidDimension; // For simplicity, let's focus on 2D for now
-    }
-
     const allocator = t.allocator;
 
     // Shape of the transposed tensor
-    const transposed_shape: [2]usize = [_]usize{ t.shape[1], t.shape[0] };
+    const transposed_shape: [4]usize = [_]usize{ t.shape[0], t.shape[1], t.shape[3], t.shape[2] };
     const tensorShape = try allocator.alloc(usize, t.shape.len);
     @memcpy(tensorShape, &transposed_shape);
 
@@ -566,11 +562,11 @@ pub fn transpose2D(comptime T: type, t: *Tensor(T)) !Tensor(T) {
     const transposed_data = try allocator.alloc(T, t.size);
 
     // Perform the transposition
-    for (0..t.shape[0]) |i| {
-        for (0..t.shape[1]) |j| {
+    for (0..t.shape[2]) |i| {
+        for (0..t.shape[3]) |j| {
             // For 2D tensor, flatten the index and swap row/column positions
-            const old_idx = i * t.shape[1] + j;
-            const new_idx = j * t.shape[0] + i;
+            const old_idx = i * t.shape[3] + j;
+            const new_idx = j * t.shape[2] + i;
             transposed_data[new_idx] = t.data[old_idx];
         }
     }
@@ -887,23 +883,17 @@ pub fn get_split_output_shapes(input_shape: []const usize, axis: i64, split_size
 /// https://onnx.ai/onnx/operators/onnx__Reshape.html
 pub fn reshape(comptime T: anytype, input: *Tensor(T), newShape: []usize, allowZero: ?bool) !Tensor(T) {
     //TODO: threat allowZero properly
-    var total_size: usize = 1;
-    for (newShape) |dim| {
-        total_size *= dim;
-    }
-    if (total_size != input.size) {
-        return TensorError.InputArrayWrongSize;
-    }
+    const adjusted_shape = try Tensor(T).ensure_4D_shape(newShape);
 
     var output = try Tensor(T).fromShape(&pkg_allocator, newShape);
 
-    try reshape_lean(T, input, newShape, allowZero, &output);
+    try reshape_lean(T, input, adjusted_shape, allowZero, &output);
 
     return output;
 }
 
 /// lean version of the above reshape
-pub fn reshape_lean(comptime T: anytype, input: *Tensor(T), newShape: []usize, allowZero: ?bool, output: *Tensor(T)) !void {
+pub fn reshape_lean(comptime T: anytype, input: *Tensor(T), newShape: []const usize, allowZero: ?bool, output: *Tensor(T)) !void {
     _ = allowZero; //TODO: threat allowZero properly
 
     @memcpy(output.data, input.data);

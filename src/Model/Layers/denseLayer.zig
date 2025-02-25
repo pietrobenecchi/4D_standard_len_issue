@@ -167,7 +167,7 @@ pub fn DenseLayer(comptime T: type) type {
 
             //---- Key Steps: -----
             // 2. Compute weight gradients (w_gradients)
-            var input_transposed = try TensMath.transposeDefault(T, &self.input);
+            var input_transposed = try TensMath.transpose2D(T, &self.input);
             defer input_transposed.deinit();
 
             std.debug.print("\nComputing weight gradients - Input transposed shape: {any}", .{input_transposed.shape});
@@ -201,7 +201,7 @@ pub fn DenseLayer(comptime T: type) type {
             std.debug.print("\nBias gradients computed - Shape: {any}", .{self.b_gradients.shape});
 
             // 4. Compute input gradients (dL_dInput)
-            var weights_transposed = try TensMath.transposeDefault(T, &self.weights);
+            var weights_transposed = try TensMath.transpose2D(T, &self.weights);
             defer weights_transposed.deinit();
 
             std.debug.print("\nComputing input gradients - Weights transposed shape: {any}", .{weights_transposed.shape});

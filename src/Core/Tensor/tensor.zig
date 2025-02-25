@@ -98,6 +98,26 @@ pub fn Tensor(comptime T: type) type {
         /// Return a all-zero tensor starting from the given shape
         /// It sobstitute init(), but defer yourTensor.deinit() is still necessary.
         pub fn fromShape(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
+            if (shape.len > 4) {
+                var total_size: usize = 1;
+                for (shape) |dim| {
+                    total_size *= dim;
+                }
+
+                const tensorShape = try allocator.alloc(usize, shape.len);
+                @memcpy(tensorShape, shape);
+
+                const tensorData = try allocator.alloc(T, total_size);
+                @memset(tensorData, 0);
+
+                return @This(){
+                    .data = tensorData,
+                    .size = total_size,
+                    .shape = tensorShape,
+                    .allocator = allocator,
+                };
+            }
+
             const adjusted_shape = try ensure_4D_shape(shape);
 
             var total_size: usize = 1;
@@ -693,12 +713,13 @@ pub fn Tensor(comptime T: type) type {
                 .allocator = self.allocator,
             };
         }
+
         // Ensures the input shape is 4D by padding with 1s if necessary. Returns an error if the shape
         // has more than 4 dimensions.
         //
         // - `shape`: The shape of the tensor
         //
-        pub inline fn ensure_4D_shape(shape: []const usize) ![]usize {
+        pub inline fn ensure_4D_shape(shape: []const usize) ![]const usize {
             // The fixed dimension should be 4. Will update in future
             // [batch, channel, row, column]
             const target_dims = 4;
@@ -708,7 +729,6 @@ pub fn Tensor(comptime T: type) type {
             }
 
             var padded_shape: [4]usize = .{ 1, 1, 1, 1 };
-
             // Calculate starting index to start
             const start_index = target_dims - shape.len;
 
