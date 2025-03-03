@@ -274,24 +274,25 @@ test "Gemm Y = a A*B + bC with broadcasting, custom parameters v2" {
 //     t3.deinit();
 // }
 
-test "Error when input tensors aren't 4D" {
-    std.debug.print("\n     test: Error when input tensors aren't 4D", .{});
+// input tensor are now always 4D!
+// test "Error when input tensors aren't 4D" {
+//    std.debug.print("\n     test: Error when input tensors aren't 4D", .{});
 
-    const allocator = pkgAllocator.allocator;
+//    const allocator = pkgAllocator.allocator;
 
-    var shape1: [3]usize = [_]usize{ 1.0, 2.0, 2.0 }; // missing batch, 1 batch, 2x2 matrix
-    var shape2: [3]usize = [_]usize{ 1.0, 2.0, 2.0 }; // missing batch, 1 batch, 2x2 matrix
-    var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
-    var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
+//    var shape1: [3]usize = [_]usize{ 1.0, 2.0, 2.0 }; // missing batch, 1 batch, 2x2 matrix
+//    var shape2: [3]usize = [_]usize{ 1.0, 2.0, 2.0 }; // missing batch, 1 batch, 2x2 matrix
+//    var t1 = try Tensor(f32).fromShape(&allocator, &shape1);
+//    var t2 = try Tensor(f32).fromShape(&allocator, &shape2);
 
-    try std.testing.expectError(TensorMathError.InputTensorsWrongShape, TensMath.gemm(f32, &t1, &t2, null, 1, 1, false, false));
+//    try std.testing.expectError(TensorMathError.InputTensorsWrongShape, TensMath.gemm(f32, &t1, &t2, null, 1, 1, false, false));
 
-    _ = TensMath.gemm(f32, &t1, &t2, null, 1, 1, false, false) catch |err| {
-        std.debug.print("\n _______ {s} ______", .{ErrorHandler.errorDetails(err)});
-    };
-    t1.deinit();
-    t2.deinit();
-}
+//    _ = TensMath.gemm(f32, &t1, &t2, null, 1, 1, false, false) catch |err| {
+//        std.debug.print("\n _______ {s} ______", .{ErrorHandler.errorDetails(err)});
+//    };
+//    t1.deinit();
+//    t2.deinit();
+//}
 
 test "Error when there's a mismatch in batch or channel dimension" {
     std.debug.print("\n     test: Error when there's a mismatch in batch or channel dimension", .{});

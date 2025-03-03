@@ -23,8 +23,8 @@ test "Pooling 2D" {
     var stride1: [2]usize = [2]usize{ 1, 1 };
 
     // Calculate W = number of windows
-    const input_rows = input1.shape[0];
-    const input_cols = input1.shape[1];
+    const input_rows = input1.shape[2];
+    const input_cols = input1.shape[3];
     const out_rows = (input_rows - kernel1[0] + 1) / stride1[0]; // 2
     const out_cols = (input_cols - kernel1[1] + 1) / stride1[1]; // 2
     const W = out_rows * out_cols; // 4
@@ -40,8 +40,8 @@ test "Pooling 2D" {
 
     // Same checks for output as original
     try std.testing.expectEqual(output1.shape.len, input1.shape.len);
-    try std.testing.expectEqual(output1.shape[0], 2);
-    try std.testing.expectEqual(output1.shape[1], 2);
+    try std.testing.expectEqual(output1.shape[2], 2);
+    try std.testing.expectEqual(output1.shape[3], 2);
 
     try std.testing.expectEqual(output1.data[0], 5);
     try std.testing.expectEqual(output1.data[1], 6);
@@ -90,9 +90,9 @@ test "Pooling 2D" {
     defer output2.deinit();
 
     try std.testing.expectEqual(output2.shape.len, input1.shape.len);
-    try std.testing.expectEqual(output2.shape[0], 1);
-    try std.testing.expectEqual(output2.shape[1], 1);
-    try std.testing.expectEqual(output2.data[0], 5);
+    try std.testing.expectEqual(output2.shape[2], 1);
+    try std.testing.expectEqual(output2.shape[3], 1);
+    try std.testing.expectEqual(output2.data[2], 5);
 
     // single window w=0 max at (1,1)
     try std.testing.expectEqual(@as(u1, 1), used_input2.data[0 * (3 * 3) + 1 * 3 + 1]);
@@ -129,8 +129,8 @@ test "Pooling multidim" {
     var stride1: [2]usize = [2]usize{ 1, 1 };
 
     const d = input1.shape[0]; // 3
-    const input_rows = input1.shape[1]; //3
-    const input_cols = input1.shape[2]; //3
+    const input_rows = input1.shape[2]; //3
+    const input_cols = input1.shape[3]; //3
     const out_rows = (input_rows - kernel1[0] + 1) / stride1[0]; //2
     const out_cols = (input_cols - kernel1[1] + 1) / stride1[1]; //2
     const W_tot = d * out_rows * out_cols; // 3*2*2=12
@@ -144,9 +144,9 @@ test "Pooling multidim" {
     defer output.deinit();
 
     try std.testing.expectEqual(output.shape.len, input1.shape.len);
-    try std.testing.expectEqual(output.shape[0], 3);
-    try std.testing.expectEqual(output.shape[1], 2);
+    try std.testing.expectEqual(output.shape[1], 3);
     try std.testing.expectEqual(output.shape[2], 2);
+    try std.testing.expectEqual(output.shape[3], 2);
 
     // We do not check used_input details here, just shapes as in original.
 }

@@ -52,18 +52,17 @@ pub fn Tensor(comptime T: type) type {
         ///Given a multidimensional array with its shape, returns the equivalent Tensor.
         /// It sobstitute init(), but defer yourTensor.deinit() is still necessary.
         pub fn fromArray(allocator: *const std.mem.Allocator, inputArray: anytype, shape: []usize) !@This() {
-
-            //const adjusted_shape = try ensure_4D_shape(shape);
+            const adjusted_shape = try ensure_4D_shape(shape);
 
             // Calculate total size based on shape
             var total_size: usize = 1;
-            for (shape) |dim| {
+            for (adjusted_shape) |dim| {
                 total_size *= dim;
             }
 
             // Allocate memory for tensor shape
-            const tensorShape = try allocator.alloc(usize, shape.len);
-            @memcpy(tensorShape, shape);
+            const tensorShape = try allocator.alloc(usize, adjusted_shape.len);
+            @memcpy(tensorShape, adjusted_shape);
 
             // Allocate memory for tensor data
             const tensorData = try allocator.alloc(T, total_size);
@@ -99,15 +98,35 @@ pub fn Tensor(comptime T: type) type {
         /// Return a all-zero tensor starting from the given shape
         /// It sobstitute init(), but defer yourTensor.deinit() is still necessary.
         pub fn fromShape(allocator: *const std.mem.Allocator, shape: []usize) !@This() {
-            //const adjusted_shape = try ensure_4D_shape(shape);
+            if (shape.len > 4) {
+                var total_size: usize = 1;
+                for (shape) |dim| {
+                    total_size *= dim;
+                }
+
+                const tensorShape = try allocator.alloc(usize, shape.len);
+                @memcpy(tensorShape, shape);
+
+                const tensorData = try allocator.alloc(T, total_size);
+                @memset(tensorData, 0);
+
+                return @This(){
+                    .data = tensorData,
+                    .size = total_size,
+                    .shape = tensorShape,
+                    .allocator = allocator,
+                };
+            }
+
+            const adjusted_shape = try ensure_4D_shape(shape);
 
             var total_size: usize = 1;
-            for (shape) |dim| {
+            for (adjusted_shape) |dim| {
                 total_size *= dim;
             }
 
-            const tensorShape = try allocator.alloc(usize, shape.len);
-            @memcpy(tensorShape, shape);
+            const tensorShape = try allocator.alloc(usize, adjusted_shape.len);
+            @memcpy(tensorShape, adjusted_shape);
 
             const tensorData = try allocator.alloc(T, total_size);
             @memset(tensorData, 0);
@@ -122,18 +141,18 @@ pub fn Tensor(comptime T: type) type {
 
         /// Given any array and its shape it reshape the tensor and update .data
         pub fn fill(self: *@This(), inputArray: anytype, shape: []usize) !void {
-            //const adjusted_shape = try ensure_4D_shape(shape);
+            const adjusted_shape = try ensure_4D_shape(shape);
 
             //deinitialize data e shape
             self.deinit(); //if the Tensor has been just init() this function does nothing
 
             //than, filling with the new values
             var total_size: usize = 1;
-            for (shape) |dim| {
+            for (adjusted_shape) |dim| {
                 total_size *= dim;
             }
-            const tensorShape = try self.allocator.alloc(usize, shape.len);
-            @memcpy(tensorShape, shape);
+            const tensorShape = try self.allocator.alloc(usize, adjusted_shape.len);
+            @memcpy(tensorShape, adjusted_shape);
 
             const tensorData = try self.allocator.alloc(T, total_size);
             _ = flattenArray(T, inputArray, tensorData, 0);
@@ -249,15 +268,18 @@ pub fn Tensor(comptime T: type) type {
             var idx: usize = 0;
             var stride: usize = 1;
 
+            var indices_4d = indices;
+
             if (indices.len != self.shape.len) {
-                return error.InvalidIndexLength;
+                indices_4d = try ensure_4D_index(indices);
+                //return error.InvalidIndexLength;
             }
 
             for (0..self.shape.len) |i| {
                 const rev_idx = self.shape.len - 1 - i;
-                const index = indices[rev_idx];
+                const index = indices_4d[rev_idx];
 
-                // Controllo per indice fuori dai limiti
+                // Check index outside limits
                 if (index >= self.shape[rev_idx]) {
                     return error.IndexOutOfBounds;
                 }
@@ -268,7 +290,6 @@ pub fn Tensor(comptime T: type) type {
 
             return idx;
         }
-
         pub fn slice(self: *Tensor(T), start_indices: []usize, slice_shape: []usize) !Tensor(T) {
             // Validate input
             if (start_indices.len != self.shape.len) return TensorError.InvalidSliceIndices;
@@ -623,6 +644,28 @@ pub fn Tensor(comptime T: type) type {
             }
 
             return &padded_shape;
+        }
+
+        pub inline fn ensure_4D_index(index: []const usize) ![]usize {
+            // The fixed dimension should be 4. Will update in future
+            // [batch, channel, row, column]
+            const target_dims = 4;
+
+            if (index.len > target_dims) {
+                return error.InvalidDimensions;
+            }
+
+            var padded_index: [4]usize = .{ 0, 0, 0, 0 };
+
+            // Calculate starting index to start
+            const start_index = target_dims - index.len;
+
+            // Copy values into last positions
+            for (index, 0..) |dim, i| {
+                padded_index[start_index + i] = dim;
+            }
+
+            return &padded_index;
         }
 
         /// Bare metal version of tensor info that uses a logging function instead of std.debug.print

@@ -27,6 +27,7 @@ test "normalize float" {
     }
 }
 
+//TODO --> modificare questo test. Messo in 4D da inputArray va, ma non idea di refactor.
 test "normalize float all different" {
     std.debug.print("\n     test: normalize float", .{});
 
@@ -117,9 +118,9 @@ test "standard normalize float 2D" {
     try DataProc.normalize(f32, &t1, NormalizType.StandardDeviationNormalization);
 
     // Check each slice (since it's 2D, each row is a slice)
-    for (0..t1.shape[0]) |b| {
-        const slice_offset = b * t1.shape[1];
-        const slice_size = t1.shape[1];
+    for (0..t1.shape[2]) |b| {
+        const slice_offset = b * t1.shape[3];
+        const slice_size = t1.shape[3];
         const slice_data = t1.data[slice_offset .. slice_offset + slice_size];
 
         // Compute mean and variance

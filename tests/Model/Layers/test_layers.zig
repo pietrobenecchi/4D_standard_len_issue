@@ -83,8 +83,8 @@ test "DenseLayer forward and backward test" {
     defer input_tensor.deinit();
 
     const output_tensor = try layer1.forward(&input_tensor);
-    try std.testing.expectEqual(output_tensor.shape[0], 5);
-    try std.testing.expectEqual(output_tensor.shape[1], 2);
+    try std.testing.expectEqual(output_tensor.shape[2], 5);
+    try std.testing.expectEqual(output_tensor.shape[3], 2);
 
     // Check that after forward, output does not contain zeros
     for (0..5) |i| {
@@ -399,8 +399,8 @@ test "Complete test of the Flatten layer functionalities with first dimension un
     // Verify the output size (should be [2, 18])
     // Because input is [2,2,3,3], the last dimensions product: 2*3*3=18
     // So output.shape should be [2, 18]
-    try std.testing.expectEqual(@as(usize, 2), output.shape[0]);
-    try std.testing.expectEqual(@as(usize, 18), output.shape[1]);
+    try std.testing.expectEqual(@as(usize, 2), output.shape[2]);
+    try std.testing.expectEqual(@as(usize, 18), output.shape[3]);
 
     // Create a dummy gradient for the backward pass (same shape as output: [2, 18])
     var dValues_data = try allocator.alloc(f64, output.size);
@@ -582,8 +582,8 @@ test "BatchNormLayer forward and backward test" {
 
     // Forward pass
     const output = try layer.forward(&input);
-    try std.testing.expectEqual(output.shape[0], 3);
-    try std.testing.expectEqual(output.shape[1], 4);
+    try std.testing.expectEqual(output.shape[2], 3);
+    try std.testing.expectEqual(output.shape[3], 4);
 
     // Check that output is normalized (mean close to 0, variance close to 1)
 
@@ -600,8 +600,8 @@ test "BatchNormLayer forward and backward test" {
     defer dx.deinit();
 
     // Check gradient shapes
-    try std.testing.expectEqual(dx.shape[0], input.shape[0]);
-    try std.testing.expectEqual(dx.shape[1], input.shape[1]);
+    try std.testing.expectEqual(dx.shape[2], input.shape[2]);
+    try std.testing.expectEqual(dx.shape[3], input.shape[3]);
 
     // Check that gamma_grad and beta_grad are updated
     const bn_layer: *BatchNormLayer(f64) = @ptrCast(@alignCast(layer.layer_ptr));

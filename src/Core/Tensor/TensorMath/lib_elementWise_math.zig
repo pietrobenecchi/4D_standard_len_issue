@@ -23,10 +23,10 @@ pub fn add_bias(comptime T: anytype, tensor: *Tensor(T), bias: *Tensor(T)) !void
     if (bias.size == 0) {
         return TensorError.EmptyTensor;
     }
-    if (bias.shape.len != 1) {
+    if (bias.shape.len != 4) {
         return TensorMathError.InputTensorsWrongShape;
     }
-    const len = bias.shape[0];
+    const len = bias.shape[3];
     if (len != tensor.shape[tensor.shape.len - 1]) {
         return TensorMathError.InputTensorDimensionMismatch;
     }

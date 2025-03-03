@@ -129,8 +129,8 @@ pub fn DenseLayer(comptime T: type) type {
             const self: *Self = @ptrCast(@alignCast(ctx));
 
             // Check input dimensions
-            if (input.shape.len != 2) return LayerError.LayerDimensionsInvalid;
-            if (input.shape[1] != self.n_inputs) return LayerError.InputTensorWrongShape;
+            if (input.shape.len != 4) return LayerError.LayerDimensionsInvalid;
+            if (input.shape[3] != self.n_inputs) return LayerError.InputTensorWrongShape;
 
             // Dealloc self.input if already allocated
             if (self.input.data.len > 0 and self.input.size > 0) {
@@ -159,15 +159,15 @@ pub fn DenseLayer(comptime T: type) type {
             std.debug.print("\nDenseLayer backward - Input shape: {any}, dValues shape: {any}", .{ self.input.shape, dValues.shape });
 
             // Check dValues dimensions
-            if (dValues.shape.len != 2) return LayerError.LayerDimensionsInvalid;
-            if (dValues.shape[0] != self.input.shape[0] or dValues.shape[1] != self.n_neurons) {
+            if (dValues.shape.len != 4) return LayerError.LayerDimensionsInvalid;
+            if (dValues.shape[2] != self.input.shape[2] or dValues.shape[3] != self.n_neurons) {
                 std.debug.print("\nShape mismatch - Expected dValues: [{}, {}], Got: [{}, {}]", .{ self.input.shape[0], self.n_neurons, dValues.shape[0], dValues.shape[1] });
                 return LayerError.InputTensorWrongShape;
             }
 
             //---- Key Steps: -----
             // 2. Compute weight gradients (w_gradients)
-            var input_transposed = try TensMath.transpose2D(T, &self.input);
+            var input_transposed = try TensMath.transposeLastTwo(T, &self.input);
             defer input_transposed.deinit();
 
             std.debug.print("\nComputing weight gradients - Input transposed shape: {any}", .{input_transposed.shape});
@@ -192,7 +192,7 @@ pub fn DenseLayer(comptime T: type) type {
             // Sum gradients for each neuron across all samples
             for (0..self.n_neurons) |neuron| {
                 var sum: T = 0;
-                for (0..dValues.shape[0]) |sample| {
+                for (0..dValues.shape[2]) |sample| {
                     sum += dValues.data[sample * self.n_neurons + neuron];
                 }
                 self.b_gradients.data[neuron] = sum;
@@ -201,7 +201,7 @@ pub fn DenseLayer(comptime T: type) type {
             std.debug.print("\nBias gradients computed - Shape: {any}", .{self.b_gradients.shape});
 
             // 4. Compute input gradients (dL_dInput)
-            var weights_transposed = try TensMath.transpose2D(T, &self.weights);
+            var weights_transposed = try TensMath.transposeLastTwo(T, &self.weights);
             defer weights_transposed.deinit();
 
             std.debug.print("\nComputing input gradients - Weights transposed shape: {any}", .{weights_transposed.shape});
@@ -243,13 +243,13 @@ pub fn DenseLayer(comptime T: type) type {
             if (choice == 1) {
                 std.debug.print("\n   input       weight   bias  output", .{});
                 std.debug.print("\n [{} x {}] * [{} x {}] + {} = [{} x {}] ", .{
-                    self.input.shape[0],
-                    self.input.shape[1],
-                    self.weights.shape[0],
-                    self.weights.shape[1],
-                    self.bias.shape[0],
-                    self.output.shape[0],
-                    self.output.shape[1],
+                    self.input.shape[2],
+                    self.input.shape[3],
+                    self.weights.shape[2],
+                    self.weights.shape[3],
+                    self.bias.shape[2],
+                    self.output.shape[2],
+                    self.output.shape[3],
                 });
                 std.debug.print("\n ", .{});
             }

@@ -852,17 +852,11 @@ pub fn get_split_output_shapes(input_shape: []const usize, axis: i64, split_size
 /// https://onnx.ai/onnx/operators/onnx__Reshape.html
 pub fn reshape(comptime T: anytype, input: *Tensor(T), newShape: []usize, allowZero: ?bool) !Tensor(T) {
     //TODO: threat allowZero properly
-    var total_size: usize = 1;
-    for (newShape) |dim| {
-        total_size *= dim;
-    }
-    if (total_size != input.size) {
-        return TensorError.InputArrayWrongSize;
-    }
+    const adjusted_shape = try Tensor(T).ensure_4D_shape(newShape);
 
     var output = try Tensor(T).fromShape(&pkg_allocator, newShape);
 
-    try reshape_lean(T, input, newShape, allowZero, &output);
+    try reshape_lean(T, input, adjusted_shape, allowZero, &output);
 
     return output;
 }

@@ -395,9 +395,9 @@ test "To Tensor Batch Test" {
     _ = loader.xNextBatch();
     _ = loader.yNextBatch();
     try loader.toTensor(&allocator, &shapeX, &shapeY);
-    try std.testing.expect(loader.xTensor.shape[0] == 1);
-    try std.testing.expect(loader.xTensor.shape[1] == 3);
-    try std.testing.expect(loader.yTensor.shape[0] == 1);
+    try std.testing.expect(loader.xTensor.shape[2] == 1);
+    try std.testing.expect(loader.xTensor.shape[3] == 3);
+    try std.testing.expect(loader.yTensor.shape[2] == 1);
 
     loader.xTensor.deinit();
     loader.yTensor.deinit();
@@ -429,9 +429,9 @@ test "MNIST batch and to Tensor test" {
     _ = loader.xNextBatch();
     _ = loader.yNextBatch();
     try loader.toTensor(&allocator, &shapeX, &shapeY);
-    try std.testing.expect(loader.xTensor.shape[0] == 2);
-    try std.testing.expect(loader.xTensor.shape[1] == 784);
-    try std.testing.expect(loader.yTensor.shape[0] == 2);
+    try std.testing.expect(loader.xTensor.shape[2] == 2);
+    try std.testing.expect(loader.xTensor.shape[3] == 784);
+    try std.testing.expect(loader.yTensor.shape[3] == 2);
 
     loader.xTensor.deinit();
     loader.yTensor.deinit();
@@ -471,9 +471,9 @@ test "Shuffling and data split" {
     try std.testing.expect(x_testBatch.len == 32);
     try std.testing.expect(y_testBatch.len == 32);
     try loader.toTensor(&allocator, &shapeX, &shapeY);
-    try std.testing.expect(loader.xTensor.shape[0] == 32);
-    try std.testing.expect(loader.xTensor.shape[1] == 784);
-    try std.testing.expect(loader.yTensor.shape[0] == 32);
+    try std.testing.expect(loader.xTensor.shape[2] == 32);
+    try std.testing.expect(loader.xTensor.shape[3] == 784);
+    try std.testing.expect(loader.yTensor.shape[3] == 32);
     loader.xTensor.deinit();
     loader.yTensor.deinit();
 }
@@ -519,13 +519,13 @@ test "Shuffling and data split 2D" {
 
     try loader.toTensor(&allocator, &shapeX, &shapeY);
 
-    try std.testing.expect(loader.xTensor.shape.len == 3);
-    try std.testing.expect(loader.xTensor.shape[0] == 32);
-    try std.testing.expect(loader.xTensor.shape[1] == 28);
+    try std.testing.expect(loader.xTensor.shape.len == 4);
+    try std.testing.expect(loader.xTensor.shape[1] == 32);
     try std.testing.expect(loader.xTensor.shape[2] == 28);
+    try std.testing.expect(loader.xTensor.shape[3] == 28);
 
-    try std.testing.expect(loader.yTensor.shape.len == 1);
-    try std.testing.expect(loader.yTensor.shape[0] == 32);
+    try std.testing.expect(loader.yTensor.shape.len == 4);
+    try std.testing.expect(loader.yTensor.shape[3] == 32);
 
     loader.xTensor.deinit();
     loader.yTensor.deinit();

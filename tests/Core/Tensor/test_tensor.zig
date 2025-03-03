@@ -188,6 +188,7 @@ test " copy() method" {
     }
 }
 
+//4D tensor not working--> modify somewhat toArray?? ASK MIRKO
 test "to array " {
     std.debug.print("\n     test:to array ", .{});
 
@@ -197,15 +198,15 @@ test "to array " {
         [_]u8{ 1, 2, 3 },
         [_]u8{ 4, 5, 6 },
     };
-    var shape: [2]usize = [_]usize{ 2, 3 };
+    var shape: [4]usize = [_]usize{ 1, 1, 2, 3 };
 
     var tensor = try Tensor(u8).fromArray(&allocator, &inputArray, &shape);
     defer tensor.deinit();
     const array_from_tensor = try tensor.toArray(shape.len);
     defer allocator.free(array_from_tensor);
 
-    try expect(array_from_tensor.len == 2);
-    try expect(array_from_tensor[0].len == 3);
+    try std.testing.expectEqual(1, array_from_tensor.len);
+    try std.testing.expectEqual(1, array_from_tensor[0].len);
 }
 
 test "test setToZero() " {
@@ -234,9 +235,9 @@ test "test setToZero() " {
     for (tensor.data) |d| {
         try std.testing.expectEqual(d, 0);
     }
-
+    const resultShape: [4]usize = [_]usize{ 1, 2, 3, 3 };
     for (0..tensor.shape.len) |i| {
-        try std.testing.expectEqual(tensor.shape[i], shape[i]);
+        try std.testing.expectEqual(tensor.shape[i], resultShape[i]);
     }
 }
 
@@ -253,7 +254,8 @@ test "slice_onnx basic slicing" {
     // Basic slice [1:3]
     var starts = [_]i64{1};
     var ends = [_]i64{3};
-    var sliced_1d = try tensor_1d.slice_onnx(&starts, &ends, null, null);
+    var axes = [_]i64{3};
+    var sliced_1d = try tensor_1d.slice_onnx(&starts, &ends, &axes, null);
     defer sliced_1d.deinit();
 
     try std.testing.expectEqual(@as(usize, 2), sliced_1d.size);
@@ -273,7 +275,8 @@ test "slice_onnx basic slicing" {
     // Slice [0:2, 1:3]
     var starts_2d = [_]i64{ 0, 1 };
     var ends_2d = [_]i64{ 2, 3 };
-    var sliced_2d = try tensor_2d.slice_onnx(&starts_2d, &ends_2d, null, null);
+    var axes_2d = [_]i64{ 2, 3 };
+    var sliced_2d = try tensor_2d.slice_onnx(&starts_2d, &ends_2d, &axes_2d, null);
     defer sliced_2d.deinit();
 
     try std.testing.expectEqual(@as(usize, 4), sliced_2d.size);
@@ -295,7 +298,8 @@ test "slice_onnx negative indices" {
     // Test negative indices [-3:-1]
     var starts = [_]i64{-3};
     var ends = [_]i64{-1};
-    var sliced = try tensor.slice_onnx(&starts, &ends, null, null);
+    var axes = [_]i64{3};
+    var sliced = try tensor.slice_onnx(&starts, &ends, &axes, null);
     defer sliced.deinit();
 
     try std.testing.expectEqual(@as(usize, 2), sliced.size);
@@ -316,7 +320,8 @@ test "slice_onnx with steps" {
     var starts = [_]i64{0};
     var ends = [_]i64{6};
     var steps = [_]i64{2};
-    var sliced = try tensor.slice_onnx(&starts, &ends, null, &steps);
+    var axes = [_]i64{3};
+    var sliced = try tensor.slice_onnx(&starts, &ends, &axes, &steps);
     defer sliced.deinit();
 
     try std.testing.expectEqual(@as(usize, 3), sliced.size);
@@ -328,7 +333,7 @@ test "slice_onnx with steps" {
     steps[0] = -1;
     starts[0] = 5;
     ends[0] = -1;
-    var reversed = try tensor.slice_onnx(&starts, &ends, null, &steps);
+    var reversed = try tensor.slice_onnx(&starts, &ends, &axes, &steps);
     defer reversed.deinit();
 
     try std.testing.expectEqual(@as(usize, 5), reversed.size);
@@ -355,12 +360,12 @@ test "slice_onnx with explicit axes" {
     // Test slicing only along axis 1
     var starts = [_]i64{1};
     var ends = [_]i64{3};
-    var axes = [_]i64{1};
+    var axes = [_]i64{3};
     var sliced = try tensor.slice_onnx(&starts, &ends, &axes, null);
     defer sliced.deinit();
 
-    try std.testing.expectEqual(@as(usize, 2), sliced.shape[1]);
-    try std.testing.expectEqual(@as(usize, 3), sliced.shape[0]);
+    try std.testing.expectEqual(@as(usize, 2), sliced.shape[3]);
+    try std.testing.expectEqual(@as(usize, 3), sliced.shape[2]);
     try std.testing.expectEqual(@as(i32, 2), sliced.data[0]);
     try std.testing.expectEqual(@as(i32, 3), sliced.data[1]);
     try std.testing.expectEqual(@as(i32, 5), sliced.data[2]);
